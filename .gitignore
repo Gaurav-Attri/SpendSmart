@@ -8,7 +8,7 @@ obj/
 *.userosscache
 *.sln.docstates
 
-# Rider / VS Code (optional but common)
+# Rider / VS Code
 .vscode/
 .idea/
 
@@ -19,11 +19,12 @@ obj/
 appsettings.Development.json
 appsettings.Local.json
 
-# EF Core migrations (ONLY if you generate them locally and don't want to track)
+# EF Core migrations (optional)
 # Migrations/
 
 # OS files
 .DS_Store
 Thumbs.db
 
+# Docker
 docker-compose.yml
