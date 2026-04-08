@@ -1,0 +1,27 @@
+# Build output
+bin/
+obj/
+
+# User-specific files
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# Rider / VS Code (optional but common)
+.vscode/
+.idea/
+
+# Logs
+*.log
+
+# Environment-specific configs (secrets)
+appsettings.Development.json
+appsettings.Local.json
+
+# EF Core migrations (ONLY if you generate them locally and don't want to track)
+# Migrations/
+
+# OS files
+.DS_Store
+Thumbs.db

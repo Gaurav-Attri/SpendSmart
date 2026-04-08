@@ -1,0 +1,1 @@
+# SpendSmart - Expense Tracker Platform
