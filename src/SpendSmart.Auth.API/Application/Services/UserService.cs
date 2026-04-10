@@ -9,6 +9,7 @@ using Microsoft.IdentityModel.Tokens;
 using SpendSmart.Auth.Application.DTOs;
 using SpendSmart.Auth.Domain.Entities;
 using SpendSmart.Auth.Infrastructure.Repositories;
+using SpendSmart.Auth.API.Infrastructure.HttpClients;
 
 namespace SpendSmart.Auth.Application.Services;
 
@@ -17,13 +18,15 @@ public class UserService : IUserService
     private readonly IUserRepository _repo;
     private readonly IConfiguration _config;
     private readonly HttpClient _httpClient;
+    private readonly ICategoryHttpClient _categoryClient;
     private readonly PasswordHasher<User> _hasher = new();
 
-    public UserService(IUserRepository repo, IConfiguration config, HttpClient httpClient)
+    public UserService(IUserRepository repo, IConfiguration config, HttpClient httpClient, ICategoryHttpClient categoryClient)
     {
         _repo = repo;
         _config = config;
         _httpClient = httpClient;
+        _categoryClient = categoryClient;
     }
 
     public async Task<(UserResponseDto user, string token, string refreshToken)> RegisterAsync(RegisterDto dto)
@@ -42,6 +45,9 @@ public class UserService : IUserService
         user.PasswordHash = _hasher.HashPassword(user, dto.Password);
         await _repo.AddAsync(user);
         await _repo.SaveChangesAsync();
+
+        // Seed default categories for the new user
+        await _categoryClient.SeedDefaultCategoriesAsync(user.UserId);
 
         var (token, refreshToken) = GenerateTokens(user);
         return (MapToDto(user), token, refreshToken);
@@ -67,6 +73,7 @@ public class UserService : IUserService
         var (token, refreshToken) = GenerateTokens(user);
         return (MapToDto(user), token, refreshToken);
     }
+    
     public async Task<(UserResponseDto user, string token, string refreshToken)> GoogleLoginAsync(string idToken)
     {
         var googleUserInfo = await VerifyGoogleIdTokenAsync(idToken);
@@ -91,6 +98,10 @@ public class UserService : IUserService
                 CreatedAt = DateTime.UtcNow
             };
             await _repo.AddAsync(user);
+            await _repo.SaveChangesAsync();
+
+            // Seed default categories for new Google user
+            await _categoryClient.SeedDefaultCategoriesAsync(user.UserId);
         }
         else if (string.IsNullOrEmpty(user.GoogleId))
         {
@@ -133,6 +144,10 @@ public class UserService : IUserService
                 CreatedAt = DateTime.UtcNow
             };
             await _repo.AddAsync(user);
+            await _repo.SaveChangesAsync();
+
+            // Seed default categories for new Google user
+            await _categoryClient.SeedDefaultCategoriesAsync(user.UserId);
         }
         else
         {
@@ -315,7 +330,6 @@ public class UserService : IUserService
         rng.GetBytes(randomNumber);
         return Convert.ToBase64String(randomNumber);
     }
-
 
     public async Task<UserResponseDto?> GetUserByIdAsync(int userId)
     {

@@ -3,10 +3,9 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
-using SpendSmart.Auth.Application.Services;
-using SpendSmart.Auth.Infrastructure.Data;
-using SpendSmart.Auth.Infrastructure.Repositories;
-using SpendSmart.Auth.API.Infrastructure.HttpClients;
+using SpendSmart.Category.API.Application.Services;
+using SpendSmart.Category.API.Infrastructure.Data;
+using SpendSmart.Category.API.Infrastructure.Repositories;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -17,10 +16,11 @@ builder.Services.AddSwaggerGen(c =>
 {
     c.SwaggerDoc("v1", new OpenApiInfo 
     { 
-        Title = "SpendSmart Auth API", 
+        Title = "SpendSmart Category API", 
         Version = "v1",
-        Description = "Authentication microservice for SpendSmart platform"
+        Description = "Category management microservice for SpendSmart platform"
     });
+    
     c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
     {
         In = ParameterLocation.Header,
@@ -28,8 +28,9 @@ builder.Services.AddSwaggerGen(c =>
         Type = SecuritySchemeType.Http,
         Scheme = "Bearer",
         BearerFormat = "JWT",
-        Description = "Enter your JWT token here"
+        Description = "Enter your JWT token here. Example: Bearer your-token"
     });
+    
     c.AddSecurityRequirement(new OpenApiSecurityRequirement
     {
         {
@@ -46,20 +47,12 @@ builder.Services.AddSwaggerGen(c =>
     });
 });
 
-builder.Services.AddDbContext<AuthDbContext>(options =>
+builder.Services.AddDbContext<CategoryDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
-builder.Services.AddHttpClient();
-
-// ADD THIS: HTTP Client for Category.API (for seeding default categories)
-builder.Services.AddHttpClient<ICategoryHttpClient, CategoryHttpClient>(client =>
-{
-    client.BaseAddress = new Uri(builder.Configuration["CategoryApi:BaseUrl"] ?? "http://localhost:5004");
-    client.Timeout = TimeSpan.FromSeconds(10);
-});
-
-builder.Services.AddScoped<IUserRepository, UserRepository>();
-builder.Services.AddScoped<IUserService, UserService>();
+// Dependency Injection
+builder.Services.AddScoped<ICategoryItemRepository, CategoryItemRepository>();
+builder.Services.AddScoped<ICategoryItemService, CategoryItemService>();
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
@@ -100,15 +93,14 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
-app.UseHttpsRedirection();
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
 
 using (var scope = app.Services.CreateScope())
 {
-    var dbContext = scope.ServiceProvider.GetRequiredService<AuthDbContext>();
-    await dbContext.Database.EnsureCreatedAsync();
+    var dbContext = scope.ServiceProvider.GetRequiredService<CategoryDbContext>();
+    await dbContext.Database.MigrateAsync();
 }
 
 await app.RunAsync();
