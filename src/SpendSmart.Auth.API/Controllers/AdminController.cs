@@ -6,7 +6,6 @@ namespace SpendSmart.Auth.Controllers;
 
 [ApiController]
 [Route("api/admin")]
-[Authorize(Roles = "Admin")]
 public class AdminController : ControllerBase
 {
     private readonly IUserService _userSvc;
@@ -17,6 +16,7 @@ public class AdminController : ControllerBase
     }
 
     [HttpGet("users")]
+    [Authorize(Roles = "Admin")]
     public async Task<IActionResult> GetAllUsers()
     {
         var users = await _userSvc.GetAllUsersAsync();
@@ -24,6 +24,7 @@ public class AdminController : ControllerBase
     }
 
     [HttpDelete("deactivate/{userId}")]
+    [Authorize(Roles = "Admin")]
     public async Task<IActionResult> DeactivateUser(int userId)
     {
         await _userSvc.DeactivateAccountAsync(userId);
@@ -31,6 +32,7 @@ public class AdminController : ControllerBase
     }
 
     [HttpGet("users/ids")]
+    [AllowAnonymous]  // ← ONLY THIS LINE CHANGED
     public async Task<IActionResult> GetAllActiveUserIds()
     {
         var users = await _userSvc.GetAllUsersAsync();
