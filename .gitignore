@@ -18,7 +18,6 @@ obj/
 # Environment-specific configs (secrets)
 appsettings.Development.json
 appsettings.Local.json
-appsettings.json
 
 # EF Core migrations (optional)
 # Migrations/

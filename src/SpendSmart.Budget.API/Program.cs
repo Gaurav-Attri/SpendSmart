@@ -18,27 +18,31 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 
+var allowedOrigins = builder.Configuration["Cors:AllowedOrigins"]?.Split(",") 
+    ?? new[] { "http://localhost:4200" };
+ 
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowFrontend",
         policy =>
         {
-            policy.WithOrigins("http://localhost:4200")
+            policy.WithOrigins(allowedOrigins)
                   .AllowAnyHeader()
                   .AllowAnyMethod()
                   .AllowCredentials();
         });
 });
 
+
 builder.Services.AddSwaggerGen(c =>
 {
-    c.SwaggerDoc("v1", new OpenApiInfo 
-    { 
-        Title = "SpendSmart Budget API", 
+    c.SwaggerDoc("v1", new OpenApiInfo
+    {
+        Title = "SpendSmart Budget API",
         Version = "v1",
         Description = "Budget management microservice for SpendSmart platform"
     });
-    
+
     c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
     {
         In = ParameterLocation.Header,
@@ -48,16 +52,16 @@ builder.Services.AddSwaggerGen(c =>
         BearerFormat = "JWT",
         Description = "Enter your JWT token here. Example: Bearer your-token"
     });
-    
+
     c.AddSecurityRequirement(new OpenApiSecurityRequirement
     {
         {
             new OpenApiSecurityScheme
             {
-                Reference = new OpenApiReference 
-                { 
-                    Type = ReferenceType.SecurityScheme, 
-                    Id = "Bearer" 
+                Reference = new OpenApiReference
+                {
+                    Type = ReferenceType.SecurityScheme,
+                    Id = "Bearer"
                 }
             },
             []
@@ -88,26 +92,17 @@ static IAsyncPolicy<HttpResponseMessage> GetRetryPolicy()
 builder.Services.AddMassTransit(x =>
 {
     x.AddConsumer<BudgetCheckConsumer>();
-    x.UsingRabbitMq((context, cfg) =>
+    x.UsingAzureServiceBus((context, cfg) =>
     {
-        var host = builder.Configuration["RabbitMq:Host"] ?? "localhost";
-        var username = builder.Configuration["RabbitMq:Username"] ?? "guest";
-        var password = builder.Configuration["RabbitMq:Password"] ?? "guest";
-        
-        cfg.Host(host, "/", h =>
-        {
-            h.Username(username);
-            h.Password(password);
-        });
-        
+        cfg.Host(builder.Configuration["ServiceBus:ConnectionString"]);
         cfg.ReceiveEndpoint("budget-check-queue", e =>
         {
             e.ConfigureConsumer<BudgetCheckConsumer>(context);
         });
-        
         cfg.ConfigureEndpoints(context);
     });
 });
+
 
 builder.Services.AddHostedService<BudgetResetService>();
 
@@ -126,7 +121,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
                 Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"]!)),
             ClockSkew = TimeSpan.Zero
         };
-        
+
         options.Events = new JwtBearerEvents
         {
             OnAuthenticationFailed = context =>
@@ -144,11 +139,10 @@ builder.Services.AddAuthorization();
 
 var app = builder.Build();
 
-if (app.Environment.IsDevelopment())
-{
-    app.UseSwagger();
-    app.UseSwaggerUI();
-}
+
+app.UseSwagger();
+app.UseSwaggerUI();
+
 
 app.UseAuthentication();
 app.UseAuthorization();
